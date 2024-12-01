@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -16,6 +17,10 @@ type Game struct {
 	Id    int
 	Owner string
 	Name  string
+}
+
+func (g Game) String() string {
+	return "#" + fmt.Sprint(g.Id) + " " + g.Name + " @" + g.Owner
 }
 
 type Storage struct {

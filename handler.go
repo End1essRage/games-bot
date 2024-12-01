@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -87,17 +86,16 @@ func (h *Handler) handleAdd(message *tgbotapi.Message) error {
 }
 
 func (h *Handler) list(chatId int64) string {
-	games := make([]Game, 0)
+	var games []Game
 
 	items, ok := h.cache.Get(strconv.FormatInt(chatId, 10))
 	if ok {
-		games = items.([]Game)
-		/*if err := json.Unmarshal([]byte(items.(string)), games); err != nil {
-			logrus.Error(err)
-		}*/
+		logrus.Info("From Cache")
 
+		games = items.([]Game)
 	} else {
-		//get from file
+		logrus.Info("From File")
+
 		games = h.storage.Get(strconv.FormatInt(chatId, 10))
 
 		h.cache.Set(strconv.FormatInt(chatId, 10), games, 5*time.Minute)
@@ -105,7 +103,7 @@ func (h *Handler) list(chatId int64) string {
 
 	sb := strings.Builder{}
 	for _, g := range games {
-		sb.WriteString("#" + fmt.Sprint(g.Id) + " " + g.Name + " " + g.Owner)
+		sb.WriteString(g.String() + "\n")
 	}
 
 	return sb.String()
