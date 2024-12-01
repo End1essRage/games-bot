@@ -22,10 +22,6 @@ func NewHandler(bot *tgbotapi.BotAPI, cache *cache.Cache, storage *Storage) *Han
 }
 
 func (h *Handler) Handle(u *tgbotapi.Update) {
-	if !u.Message.IsCommand() && u.CallbackQuery == nil {
-		return
-	}
-
 	if u.CallbackQuery != nil {
 		if u.CallbackQuery.Data == "close" {
 			deleteMsg := tgbotapi.NewDeleteMessage(u.CallbackQuery.Message.Chat.ID, u.CallbackQuery.Message.MessageID)
@@ -33,6 +29,10 @@ func (h *Handler) Handle(u *tgbotapi.Update) {
 
 			return
 		}
+	}
+
+	if !u.Message.IsCommand() {
+		return
 	}
 
 	chatId := u.Message.Chat.ID
@@ -98,11 +98,7 @@ func (h *Handler) list(chatId int64) string {
 
 	} else {
 		//get from file
-		var err error
-		games, err = h.storage.Get(strconv.FormatInt(chatId, 10))
-		if err != nil {
-			logrus.Error(err)
-		}
+		games = h.storage.Get(strconv.FormatInt(chatId, 10))
 
 		h.cache.Set(strconv.FormatInt(chatId, 10), games, 5*time.Minute)
 	}

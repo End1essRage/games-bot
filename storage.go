@@ -22,6 +22,8 @@ type Storage struct {
 	basePath string
 }
 
+const defaultPerm = 0774 //read and write
+
 func NewStorage(basePath string) *Storage {
 	//Создаем папку
 	if err := os.MkdirAll(basePath, defaultPerm); err != nil {
@@ -31,28 +33,11 @@ func NewStorage(basePath string) *Storage {
 	return &Storage{basePath: basePath}
 }
 
-const defaultPerm = 0774 //read and write
-
 func (s *Storage) Add(chatUid string, game Game) error {
 	//путь до файла
 	fPath := filepath.Join(s.basePath, chatUid+".json")
 
-	file := s.createOpenFile(fPath)
-
-	defer func() { _ = file.Close() }()
-
-	//считываем данные с файла
-	buffer, err := os.ReadFile(fPath)
-	if err != nil {
-		logrus.Error(err)
-	}
-
-	//десериализуем данные
-	var data Data
-
-	if err := json.Unmarshal(buffer, &data); err != nil {
-		logrus.Info("no data in file")
-	}
+	data := s.getData(fPath)
 
 	//задаем id новой записи
 	newId := 1
@@ -65,6 +50,47 @@ func (s *Storage) Add(chatUid string, game Game) error {
 	//Добавляем новую запись
 	data.Games = append(data.Games, game)
 
+	err := s.writeData(data, fPath)
+	if err != nil {
+		logrus.Error(err)
+	}
+
+	return nil
+}
+
+func (s *Storage) Get(chatUid string) []Game {
+	fPath := filepath.Join(s.basePath, chatUid+".json")
+
+	data := s.getData(fPath)
+
+	return data.Games
+}
+
+func (s *Storage) getData(path string) Data {
+	file := s.createOpenFile(path)
+
+	defer func() { _ = file.Close() }()
+
+	//считываем данные с файла
+	buffer, err := os.ReadFile(path)
+	if err != nil {
+		logrus.Error(err)
+	}
+
+	//десериализуем данные
+	var data Data
+
+	if err := json.Unmarshal(buffer, &data); err != nil {
+		logrus.Info("no data in file")
+	}
+
+	return data
+}
+
+func (s *Storage) writeData(data Data, path string) error {
+	file := s.createOpenFile(path)
+
+	defer func() { _ = file.Close() }()
 	//Сериализуем
 	toWrite, err := json.Marshal(data)
 	if err != nil {
@@ -72,28 +98,13 @@ func (s *Storage) Add(chatUid string, game Game) error {
 	}
 
 	//Записываем
+
 	_, err = file.Write(toWrite)
 	if err != nil {
 		return err
 	}
 
 	return nil
-}
-
-func (s *Storage) Get(chatUid string) ([]Game, error) {
-	fPath := filepath.Join(s.basePath, chatUid+".json")
-
-	data, err := os.ReadFile(fPath)
-	if err != nil {
-		return nil, err
-	}
-
-	games := make([]Game, 0)
-	if err := json.Unmarshal(data, games); err != nil {
-		logrus.Info("no data in file")
-	}
-
-	return games, nil
 }
 
 func (s *Storage) createOpenFile(path string) *os.File {
