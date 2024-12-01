@@ -2,12 +2,15 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/sirupsen/logrus"
 )
+
+type Data struct {
+	Games []Game
+}
 
 type Game struct {
 	Id    int
@@ -20,48 +23,55 @@ type Storage struct {
 }
 
 func NewStorage(basePath string) *Storage {
+	//Создаем папку
+	if err := os.MkdirAll(basePath, defaultPerm); err != nil {
+		logrus.Fatal(err)
+	}
+
 	return &Storage{basePath: basePath}
 }
 
 const defaultPerm = 0774 //read and write
 
 func (s *Storage) Add(chatUid string, game Game) error {
+	//путь до файла
 	fPath := filepath.Join(s.basePath, chatUid+".json")
 
-	if err := os.MkdirAll(s.basePath, defaultPerm); err != nil {
-		return fmt.Errorf("cant save: %w", err)
-	}
-
-	file, err := os.Create(fPath)
-	if err != nil {
-		return fmt.Errorf("cant create file: %w", err)
-	}
+	file := s.createOpenFile(fPath)
 
 	defer func() { _ = file.Close() }()
 
-	newId := 0
-	data, err := os.ReadFile(fPath)
+	//считываем данные с файла
+	buffer, err := os.ReadFile(fPath)
 	if err != nil {
-		return err
+		logrus.Error(err)
 	}
 
-	games := make([]Game, 0)
-	if err := json.Unmarshal(data, games); err != nil {
+	//десериализуем данные
+	var data Data
+
+	if err := json.Unmarshal(buffer, &data); err != nil {
 		logrus.Info("no data in file")
 	}
 
-	if len(games) > 0 {
-		newId = games[len(games)-1].Id + 1
+	//задаем id новой записи
+	newId := 1
+
+	if len(data.Games) > 0 {
+		newId = data.Games[len(data.Games)-1].Id + 1
 	}
 
 	game.Id = newId
-	games = append(games, game)
+	//Добавляем новую запись
+	data.Games = append(data.Games, game)
 
-	toWrite, err := json.Marshal(games)
+	//Сериализуем
+	toWrite, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
 
+	//Записываем
 	_, err = file.Write(toWrite)
 	if err != nil {
 		return err
@@ -84,4 +94,18 @@ func (s *Storage) Get(chatUid string) ([]Game, error) {
 	}
 
 	return games, nil
+}
+
+func (s *Storage) createOpenFile(path string) *os.File {
+	file, err := os.OpenFile(path, os.O_RDWR, defaultPerm)
+	if err != nil {
+		f, err := os.Create(path)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		return f
+	}
+
+	return file
 }

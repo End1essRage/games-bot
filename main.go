@@ -52,7 +52,8 @@ func main() {
 	bot.Debug = Env == ENV_DEBUG
 
 	cache := cache.New(5*time.Minute, 10*time.Minute)
-	handler := NewHandler(bot, cache)
+	storage := NewStorage("db")
+	handler := NewHandler(bot, cache, storage)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
