@@ -25,14 +25,14 @@ var (
 func init() {
 	logrus.SetFormatter(&logrus.TextFormatter{})
 
-	Env = os.Getenv("ENVIRONMENT")
+	Env = os.Getenv("ENV")
 	if Env == "" {
 		if err := godotenv.Load(); err != nil {
 			logrus.Warning("error while reading environment %s", err.Error())
 		}
 	}
 
-	Env = os.Getenv("ENVIRONMENT")
+	Env = os.Getenv("ENV")
 	if Env == "" {
 		logrus.Warn("cant set environment, setting to local by default")
 		Env = ENV_LOCAL
